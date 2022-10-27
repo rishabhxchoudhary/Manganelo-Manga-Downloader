@@ -7,6 +7,7 @@ from PIL import Image
 import os
 import shutil
 from fpdf import FPDF
+from PyPDF2 import PdfFileMerger
 
 DIR = os.getcwd()
 
@@ -78,11 +79,24 @@ def download_manga(name,url):
     os.chdir(path)
     down_all(pages)
     imgs = [str(i+1)+".jpg" for i in range(num)]
-    pdf = FPDF()
+    pdfs = [str(i+1)+".pdf" for i in range(num)]
+    i=0
     for img in imgs:
+        i+=1
+        cover = Image.open(img)
+        width, height = cover.size
+        # convert pixel in mm with 1px=0.264583 mm
+        width, height = float(width * 0.264583), float(height * 0.264583)
+        pdf = FPDF('P','mm',[width,height])
         pdf.add_page()
-        pdf.image(img,0,0,210,297)
-    pdf.output(name+".pdf", "F")
+        pdf.image(img,0,0,width,height)
+        pdf.output(str(i)+".pdf", "F")
+        os.remove(img)
+    merger = PdfFileMerger()
+    for pdf in pdfs:
+        merger.append(pdf)
+    merger.write(name+'.pdf')
+    merger.close()
     os.rename(os.path.join(path,name+".pdf"), os.path.join(DIR,name+".pdf"))
     shutil.rmtree(path)
     print("Done")
@@ -90,11 +104,12 @@ def download_manga(name,url):
 def main():
     URL = input("Enter Manganelo URL : ")
     chapters = chapter_links(URL)
-    for i in chapters:
+    x = dict(reversed(list(chapters.items())))
+    # for i in chapters:
+    for i in x:
         print(i)
-        x = input("Download ? (y/n) : ")
-        if x.lower() == "y":
-            download_manga(i,chapters[i])
+        y = input("Download ? (y/n) : ")
+        if y.lower() == "y":
+            download_manga(i,x[i])
             break
-        
 main()
